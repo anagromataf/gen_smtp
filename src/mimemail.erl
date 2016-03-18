@@ -228,16 +228,8 @@ decode_header_tokens_permissive([NextToken | _] = Tokens, Charset, [{_, _} | Sta
 decode_header_tokens_permissive([Data | Tokens], Charset, Stack) ->
 	decode_header_tokens_permissive(Tokens, Charset, [Data | Stack]).
 
-
 convert(To, From, Data) ->
-	CD = case iconv:open(To, From) of
-			 {ok, Res} -> Res;
-			 {error, einval} -> throw({bad_charset, From})
-		 end,
-	Converted = iconv:conv(CD, Data),
-	iconv:close(CD),
-	Converted.
-
+    iconv:convert(From, To, Data).
 
 decode_component(Headers, Body, MimeVsn, Options) when MimeVsn =:= <<"1.0">> ->
 	case parse_content_disposition(get_header_value(<<"Content-Disposition">>, Headers)) of
@@ -474,13 +466,7 @@ decode_body(Type, Body, undefined, _OutEncoding) ->
 decode_body(Type, Body, InEncoding, OutEncoding) ->
 	NewBody = decode_body(Type, Body),
 	InEncodingFixed = fix_encoding(InEncoding),
-	CD = case iconv:open(OutEncoding, InEncodingFixed) of
-		{ok, Res} -> Res;
-		{error, einval} -> throw({bad_charset, InEncodingFixed})
-	end,
-	{ok, Result} = iconv:conv(CD, NewBody),
-	iconv:close(CD),
-	Result.
+    convert(OutEncoding, InEncodingFixed, NewBody).
 
 -spec(decode_body/2 :: (Type :: binary() | 'undefined', Body :: binary()) -> binary()).
 decode_body(undefined, Body) ->
